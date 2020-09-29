@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    body {
+      background: rgba(210, 180, 140, 0.529);
+    }
+
+    /* 棋盘 */
+    #board {
+      margin: 20px auto;
+      width: 300px;
+      background: tan;
+      box-shadow: 0 0 1px 0 white;
+    }
+
+    /* 棋盘格子 */
+    #board>div {
+      display: inline-block;
+      width: 100px;
+      height: 100px;
+      box-shadow: 0 0 1px 0 white;
+      text-align: center;
+      line-height: 100px;
+      vertical-align: middle;
+      font-size: 50px;
+      font-weight: 700;
+      transition: all .2s;
+    }
+
+    #board>div:hover {
+      cursor: pointer;
+      font-size: 54px;
+      z-index: -1;
+      box-shadow: 0 0 1px 2px white;
+    }
+
+    /* 友好提示及重新开始按钮样式 */
+    .text {
+      position: fixed;
+      top: 320px;
+      right: calc(50vw - 50px);
+      width: 100px;
+      height: 50px;
+      line-height: 50px;
+      text-align: center;
+    }
+
+    /* 重新开始 */
+    #reset {
+      top: 370px;
+      height: 40px;
+      line-height: 40px;
+      box-shadow: 0 0 1px 2px tan;
+      background: rgba(110, 223, 217, 0.651);
+      border-radius: 5px;
+      color: white;
+      transition: all 0.3s;
+    }
+
+    #reset:hover {
+      cursor: pointer;
+      transform: scale(1.05);
+    }
+
+    /* 重新开始 */
+    #self {
+      top: 430px;
+      height: 40px;
+      line-height: 40px;
+      box-shadow: 0 0 1px 2px tan;
+      background: rgba(110, 223, 217, 0.651);
+      border-radius: 5px;
+      color: white;
+      transition: all 0.3s;
+    }
+
+    #self:hover {
+      cursor: pointer;
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 棋盘 -->
+  <div id="board"></div>
+  <!-- 描述 -->
+  <div id="desc" class="text"></div>
+  <!-- 重新开始 -->
+  <div id="reset" class="text">重新开始</div>
+  <div id="self" class="text">修改对战方式</div>
+
+  <script>
+    // 棋子
+    const X = '❌'
+    const O = '⭕️'
+    // 落子一方
+    let next = 1
+    const nextDesc = '下一步是：'
+    // 是否为人人对战
+    let manSelf = false
+    // 机器先走 ---> 还不能找到最好的中间点..
+    let computerFirst = false
+    // 结束
+    let end = false
+    // 初始化棋盘数据 2为x，1为o，0为空
+    let pattern = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ]
+
+    // 渲染棋盘
+    function show() {
+      const board = document.querySelector('#board')
+      board.innerHTML = ''
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const cell = document.createElement('div')
+          // 通过棋盘数据确定当前格子里的棋子状态
+          cell.innerText = pattern[i][j] === 2 ? X : pattern[i][j] === 1 ? O : ''
+          // 监听点击
+          cell.addEventListener('click', (e) => youMove(i, j, e))
+          // 将格子添加到棋盘中
+          board.appendChild(cell)
+        }
+      }
+      // 友好提示
+      if (end) return
+      if (pattern.flat().some(item => !item)) {
+        desc(next === 1 ? nextDesc + O : nextDesc + X)
+      } else {
+        desc('游戏结束')
+      }
+    }
+
+    // 提示
+    desc = (text) => {
+      const descEle = document.querySelector('#desc')
+      descEle.innerHTML = text
+    }
+
+    // 落子行为[点击事件]
+    youMove = (x, y, e) => {
+      if (e.target.innerText || end) return
+      pattern[x][y] = next
+      const newQ = next
+      if (check(pattern, newQ)) {
+        end = true
+        show()
+        desc((next === 2 ? X : O) + ' WIN')
+        return
+      }
+      next = 3 - next
+      // 重新渲染
+      show()
+
+      // 预测能否赢
+      if (willWin(pattern, next)) {
+        const descEle = document.querySelector('#desc')
+        const text = descEle.innerHTML
+        descEle.innerHTML = (next === 2 ? X : O) + 'WILL WIN'
+        setTimeout(() => {
+          descEle.innerHTML = text
+        }, 1000)
+      }
+      const res = bestChoice(pattern, next)
+      console.log(res, 'res')
+      switch (res.result) {
+        case 1:
+          console.log((next === 2 ? X : O) + 'will win' + res.point.toString())
+          break;
+        case -1:
+          console.log((next === 2 ? X : O) + 'will fail' + res.point.toString())
+          break;
+        default:
+          console.log('平局')
+          break;
+      }
+
+      !manSelf && computerMove()
+    }
+
+    computerMove = () => {
+      let choice = bestChoice(pattern, next)
+      const newQ = next
+      if (choice.point) {
+        pattern[choice.point[0]][choice.point[1]] = next
+      }
+      if (check(pattern, newQ)) {
+        end = true
+        show()
+        desc((next === 2 ? X : O) + ' WIN')
+        return
+      }
+      next = 3 - next
+      // 重新渲染
+      show()
+    }
+
+    // 预测
+    willWin = (pattern, next) => {
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (pattern[i][j]) {
+            continue
+          } else {
+            const tempPattern = clone(pattern)
+            tempPattern[i][j] = next
+            if (check(tempPattern, next)) {
+              return [i, j]
+            }
+          }
+        }
+      }
+      return null
+    }
+
+    clone = (pattern) => {
+      return JSON.parse(JSON.stringify(pattern))
+    }
+
+    // 寻找最好的落子点
+    function bestChoice(pattern, next) {
+      let p
+      if (p = willWin(pattern, next)) {
+        return {
+          point: p,
+          result: 1
+        }
+      }
+      let result = -2 // 没点
+      let point = null
+      for (let i = 0; i < 3.; i++) {
+        for (let j = 0; j < 3; j++) {
+          if (pattern[i][j]) {
+            continue
+          } else {
+            let temp = clone(pattern)
+            temp[i][j] = next
+            let r = bestChoice(temp, 3 - next).result
+            if (- r > result) {
+              result = -r
+              point = [i, j]
+            }
+          }
+        }
+      }
+      return {
+        point: point,
+        result: point ? result : 0
+      }
+    }
+
+    // 落子后判断输赢
+    check = (pattern, newQ) => {
+      // 判断3行
+      for (let i = 0; i < 3; i++) {
+        let win = true
+        for (let j = 0; j < 3; j++) {
+          if (pattern[i][j] !== newQ) {
+            win = false
+          }
+        }
+        if (win) {
+          return true
+        }
+      }
+      // 判断3列
+      for (let i = 0; i < 3; i++) {
+        let win = true
+        for (let j = 0; j < 3; j++) {
+          if (pattern[j][i] !== newQ) {
+            win = false
+          }
+        }
+        if (win) {
+          return true
+        }
+      }
+      // 判断\
+      if (pattern[0][0] === pattern[1][1] && pattern[0][0] === pattern[2][2] && pattern[0][0] === newQ) {
+        return true
+      }
+      // 判断/
+      if (pattern[0][2] === pattern[1][1] && pattern[0][2] === pattern[2][0] && pattern[0][2] === newQ) {
+        return true
+      }
+    }
+
+    // 重新开始 也是初始化工作，可以合并
+    reset = () => {
+      const resetEle = document.querySelector('#reset')
+      resetEle.addEventListener('click', e => {
+        pattern = [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ]
+        end = false
+        next = 1
+        desc('下一步是：' + O)
+        show()
+      })
+    }
+    reset()
+
+    self = () => {
+      const manEle = document.querySelector('#self')
+      manEle.addEventListener('click', () => {
+        pattern = [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ]
+        end = false
+        next = 1
+        desc('下一步是：' + O)
+        show()
+        manSelf = !manSelf
+        console.log(manSelf)
+      })
+    }
+    self()
+
+    // 初始渲染
+    show()
+    computerFirst && computerMove()
+  </script>
+</body>
+
+</html>
