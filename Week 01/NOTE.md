@@ -16,11 +16,17 @@
 
 3. 脑壳疼，小游戏还不是特别完善
 
+---
+
 ## 异步编程
 
 ### 记录
 
-1. for前面放个async我是没想到的
+1. 排版的时候div换行回车导致没居中问题，看了好久才发现
+
+2. for前面放个async我是没想到的
+
+---
 
 ## 编辑一本整个前端的书
 
@@ -31,3 +37,19 @@
 3. Vue跟React的简单原理和使用。
 
 4. SVG介绍下，蛮有意思的。
+
+---
+
+## github url
+
+1. [Brooks](https://github.com/JiangKewen/Frontend-05-Template)
+
+## 提交格式
+
+```js
+#学号:G20200447050081
+#姓名:Brooks
+#班期:5
+#小组:4
+#作业&总结链接:https://github.com/JiangKewen/Frontend-05-Template/tree/master/Week%2001
+```
