@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+
+  <style>
+    .cell {
+      width: 6px;
+      height: 6px;
+      background: rgba(128, 128, 128, 0.418);
+      border-right: 1px solid white;
+      border-bottom: 1px solid white;
+      display: inline-block;
+      line-height: 7px;
+      vertical-align: middle;
+    }
+
+    .container {
+      width: 701px;
+      line-height: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container"></div>
+  <button onclick="localStorage['map']=JSON.stringify(map)">Save</button>
+  <script>
+    // 初始化地图状态
+    let map = localStorage['map'] ? JSON.parse(localStorage['map']) : Array(10000).fill(0)
+
+    // 获取地图容易
+    let container = document.querySelector('.container')
+
+    // 给地图添加100*100个像素并添加事件
+    for (let i = 0; i < 100; i++) {
+      for (let j = 0; j < 100; j++) {
+        let cell = document.createElement('div')
+        cell.classList.add('cell')
+
+        if (map[100 * j + i] === 1) {
+          cell.style.backgroundColor = 'black'
+        }
+
+        cell.addEventListener('mousemove', () => {
+          if (mouseDown) {
+            if (clear) {
+              cell.style.backgroundColor = ''
+              map[100 * j + i] = 0
+            } else {
+              cell.style.backgroundColor = 'black'
+              map[100 * j + i] = 1
+            }
+          }
+        })
+
+        container.appendChild(cell)
+      }
+    }
+
+    let mouseDown = false
+    let clear = false
+    document.addEventListener('mousedown', e => {
+      mouseDown = true
+      clear = (e.which === 3)
+    })
+    document.addEventListener('mouseup', () => {
+      mouseDown = false
+    })
+    document.addEventListener('contextmenu', e => {
+      e.preventDefault()
+    })
+    // 以上，地图的初始化结束
+
+    // 休眠
+    function sleepT(t) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, t)
+      })
+    }
+
+    // 路径搜索
+    async function path(map, start, end) {
+      let queue = [start]
+
+      // 往queue数据结构中添加点
+      async function insert(x, y) {
+        if (x < 0 || x >= 100 || y < 0 || y >= 100) {
+          return
+        }
+        if (map[x * 100 + y]) {
+          return
+        }
+        await sleepT(50)
+        container.children[x * 100 + y].style.backgroundColor = 'tan'
+        map[x * 100 + y] = 2
+        queue.push([x, y])
+      }
+
+      while (queue.length) {
+        let [x, y] = queue.shift()
+        // console.log('x,y:', x, y)
+        if (x === end[0] && y === end[1]) {
+          return true
+        }
+
+        await insert(x -1, y)
+        await insert(x, y - 1)
+        await insert(x, y + 1)
+        await insert(x + 1, y)
+      }
+
+      return false
+    }
+  </script>
+</body>
+
+</html>
